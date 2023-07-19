@@ -10,3 +10,4 @@ The following Analytics are available:
 The following are the required dependencies: 
 1. Apache Hadoop
 2. OpenNLP files: opennlp-tools-1.9.3.jar and opennlp-en-ud-ewt-pos-1.0-1.9.3.bin for the features like POS tagger and stemmer. Also the bin file consist of the pretrained POS tagger.
+

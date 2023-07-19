@@ -1,4 +1,5 @@
 import java.io.File;
+
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -18,6 +19,7 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.util.StringUtils;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -35,12 +37,12 @@ import opennlp.tools.tokenize.SimpleTokenizer;
 import opennlp.tools.stemmer.PorterStemmer;
 
 public class DocumentFrequency {
-	public static class TokenizerMapper extends Mapper<Object, Text, Text, IntWritable> {
+	public static class TokenizerMapper extends Mapper<Object, Text, Text, Text> {
 
 		private final static IntWritable one = new IntWritable(1);
 		private Text word = new Text();
-		private POSModel model;
 	    private Set<String> stopWords = new HashSet<>();
+	    private Text docid = new Text();
 		
 	    public void setup(Context context) throws IOException, InterruptedException {
 	        // Load stopwords from file
@@ -54,53 +56,51 @@ public class DocumentFrequency {
 	          }
 	        }
 	      }
+	    
 
 		@Override
 		public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
 			
-			model = new POSModelLoader().load(new File("/Users/monjoy/Desktop/Assignment2/opennlp-en-ud-ewt-pos-1.0-1.9.3.bin")); 
 			PorterStemmer stemmer = new PorterStemmer();
 			String line = value.toString();
+			String fileName = ((FileSplit) context.getInputSplit()).getPath().getName();
+		    docid.set(fileName);
 			
 			
 			if (line != null) {
 				SimpleTokenizer tokenizer = SimpleTokenizer.INSTANCE;
 		    	String tokenizedLine[] = tokenizer.tokenize(line); //Tokenize line
 		    	
-		    	//Unique token extraction 
-		    	Set<String> uniqueWords = new HashSet<String>();
+		    	 
+		    	
 		    	
 		    	for(String s: tokenizedLine) {
 		    		 if (!stopWords.contains(s)){
-		    		uniqueWords.add(s.toLowerCase());
-		    		 
-		    		}
+		    			 String stemmedOutput = stemmer.stem(s.toLowerCase());
+				    		word.set(stemmedOutput);
+							context.write(word, docid);
+		    			 
+		    		 }
 		    	}
-		    	
-		    	//Stemming and intermediate map formation 
-		    	for(String token: uniqueWords){
-		    		String stemmedOutput = stemmer.stem(token);
-		    		word.set(stemmedOutput);
-					context.write(word, one);
-					//we emit word,1 
-	    	}
+		    }
 				
-			}
 		}
+		
 	}
 
-	public static class IntSumReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+	public static class IntSumReducer extends Reducer<Text, Text, Text, IntWritable> {
 		private IntWritable result = new IntWritable();
 
 		@Override
-		public void reduce(Text key, Iterable<IntWritable> values, Context context)
+		public void reduce(Text key, Iterable<Text> values, Context context)
 				throws IOException, InterruptedException {
 			int sum = 0;
+			Set<String> docids = new HashSet<String>();
 			//Checking for unique document only 
-			for (IntWritable val : values) {
-				sum += val.get();
+			for (Text val : values) {
+				docids.add(val.toString());
 			}
-			result.set(sum);
+			result.set(docids.size());
 		    context.write(key, result);
 		
 		}
@@ -129,7 +129,9 @@ public class DocumentFrequency {
 	    job.setReducerClass(IntSumReducer.class);
 	    
 	    job.setOutputKeyClass(Text.class);
-	    job.setOutputValueClass(IntWritable.class);
+	    job.setOutputValueClass(Text.class);
+	    
+	    job.setOutputFormatClass(TextOutputFormat.class);
 	    //	    job.setOutputFormatClass(OutputFormat.class);
 	
 	    FileInputFormat.addInputPath(job, new Path(args[0]));

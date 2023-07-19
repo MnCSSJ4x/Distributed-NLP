@@ -1,7 +1,10 @@
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
 
@@ -12,6 +15,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.Mapper.Context;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
@@ -27,15 +31,14 @@ public class Pairs {
 
 		private final static IntWritable one = new IntWritable(1);
 		private Text word = new Text();
-		private POSModel model;
-	    private POSTaggerME tagger;
-		
-
+		private static POSModel model = new POSModelLoader().load(new File("/Users/monjoy/Desktop/Assignment2/opennlp-en-ud-ewt-pos-1.0-1.9.3.bin"));;
+	    private static POSTaggerME tagger=new POSTaggerME(model);
+	    
 		@Override
 		public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
 			
-			model = new POSModelLoader().load(new File("/Users/monjoy/Desktop/Assignment2/opennlp-en-ud-ewt-pos-1.0-1.9.3.bin")); 
-			tagger = new POSTaggerME(model);
+//			model = new POSModelLoader().load(new File("/Users/monjoy/Desktop/Assignment2/opennlp-en-ud-ewt-pos-1.0-1.9.3.bin")); 
+//			tagger = new POSTaggerME(model);
 			String line = value.toString();
 			
 //			String[] tokens = line.split("[^\\w']+");

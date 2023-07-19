@@ -4,12 +4,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map.Entry;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -26,20 +28,16 @@ public class Stripes {
 
 	public static class TokenizerMapper extends Mapper<Object, Text, Text, MapWritable> {
 
-		private final static IntWritable one = new IntWritable(1);
+	
 		private Text word = new Text();
-		private POSModel model;
-	    private POSTaggerME tagger;
-		
+		private static POSModel model = new POSModelLoader().load(new File("/Users/monjoy/Desktop/Assignment2/opennlp-en-ud-ewt-pos-1.0-1.9.3.bin"));
+	    private static POSTaggerME tagger=new POSTaggerME(model);
 
 		@Override
 		public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
 			
-			model = new POSModelLoader().load(new File("/Users/monjoy/Desktop/Assignment2/opennlp-en-ud-ewt-pos-1.0-1.9.3.bin")); 
-			tagger = new POSTaggerME(model);
 			String line = value.toString();
 			
-//			String[] tokens = line.split("[^\\w']+");
 //			for (String token : tokens) {
 //				word.set(token);
 //				context.write(word, one);
@@ -60,31 +58,68 @@ public class Stripes {
 //			  	}
 		    	List<String> words = Arrays.asList(sample.toString().split(" "));
 		    	
-		
 		    	for(String w : words){
 		    		word.set(w.split("_")[1]);
-					context.write(word, one);
-//		    		
+		    		if(map.containsKey(word)) {
+		    			IntWritable temp =(IntWritable)map.get(new Text(word));
+		    			int x = temp.get();
+		    			x++;
+		    			temp.set(x);
+		    			map.put(new Text(word), temp);
+		    		}
+		    		else {
+		    			map.put(new Text(word), new IntWritable(1));
+		    		}
 		    	}
 		    	
-		   
-				
+		    	for (MapWritable.Entry<Writable, Writable> entry : map.entrySet()) {
+		    		word.set((Text) entry.getKey());
+		    		context.write(word, map);
+		        }
+		    	
+		    	
+		    	
 			}
+		
 		}
 	}
 
-	public static class IntSumReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+	public static class IntSumReducer extends Reducer<Text, MapWritable, Text, IntWritable> {
 		private IntWritable result = new IntWritable();
+		private Text word = new Text();
 
 		@Override
-		public void reduce(Text key, Iterable<IntWritable> values, Context context)
+		public void reduce(Text key, Iterable<MapWritable> values, Context context)
 				throws IOException, InterruptedException {
-			int sum = 0;
-			for (IntWritable val : values) {
-				sum += val.get();
-			}
-			result.set(sum);
-			context.write(key, result);
+			MapWritable ret = new MapWritable();
+			
+			
+            for (MapWritable value : values){
+
+                for(MapWritable.Entry<Writable, Writable> e : value.entrySet()){
+                	if(e.getKey().equals(key)) {                		
+                		if (ret.containsKey(e.getKey())){                	                    		
+                			int i = ((IntWritable)e.getValue()).get();
+                			int j = ((IntWritable)ret.get(e.getKey())).get();
+                			ret.put(e.getKey(), new IntWritable(i+j));
+                		} else {
+                			ret.put(e.getKey(), e.getValue());
+                		}
+                	}
+                }
+            }
+            
+	    	for (MapWritable.Entry<Writable, Writable> entry : ret.entrySet()) {
+	    		word.set((Text) entry.getKey());
+	    		context.write(word, (IntWritable)entry.getValue());
+	        }
+			
+//			int sum = 0;
+//			for (IntWritable val : values) {
+//				sum += val.get();
+//			}
+//			result.set(sum);
+//			context.write(key, result);
 		}
 
 	}
@@ -101,7 +136,7 @@ public class Stripes {
 		job.setReducerClass(IntSumReducer.class);
 
 		job.setOutputKeyClass(Text.class);
-		job.setOutputValueClass(IntWritable.class);
+		job.setOutputValueClass(MapWritable.class);
 
 		FileInputFormat.addInputPath(job, new Path(args[0]));
 		FileOutputFormat.setOutputPath(job, new Path(args[1]));
@@ -109,4 +144,3 @@ public class Stripes {
 		System.exit(job.waitForCompletion(true) ? 0 : 1);
 	}
 }
-
