@@ -1,0 +1,11 @@
+Assignment-1 demo will be on 30th Mar from 11:15 to 12:45 pm. Each group will be assigned to a TA and will be given 10-15 minutes for the demo/discussion. All group members should be present during the demo. 
+
+Refer "Additional MR files" folder for stopwords.txt and the code snippets related to how to use distributed cache in hadoop.
+
+Small dataset: Wiki-50 (for testing and dev purpose only.)
+
+Large dataset: Wiki-10K (for showing the final output; if you are unable to use 10K articles due to memory issues, report the best possible size your program could use.)
+
+Note: In problem 2, I'll let you choose the criteria for selecting the 100 terms to produce the TF-IDF scores. I think we might end up with words that appear in every document if we just stick with the keywords with the highest document frequency scores. Instead, if we choose low scores, we may receive a variety of uncommon words for which the term-document matrix will be sparse. Therefore, even choosing something in the middle is an option. Our intention here is to restrict the number of words in the dictionary.
+
+No emails requesting an extension of the submission deadline will be entertained!
